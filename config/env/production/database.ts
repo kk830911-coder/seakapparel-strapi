@@ -2,11 +2,14 @@ import type { Core } from '@strapi/strapi';
 
 const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Database => ({
   connection: {
-    client: 'sqlite',
+    client: 'postgres',
     connection: {
-      filename: '.tmp/data.db',
+      connectionString: env('DATABASE_URL'),
+      ssl: { rejectUnauthorized: false },
     },
-    useNullAsDefault: true,
+    options: {
+      ssl: true,
+    },
   },
 });
 
