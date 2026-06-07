@@ -1,6 +1,5 @@
-import type { Core } from '@strapi/strapi';
-
-const config: Core.Config.Middlewares = [
+// @ts-ignore
+const config = [
   'strapi::logger',
   'strapi::errors',
   {
@@ -9,9 +8,9 @@ const config: Core.Config.Middlewares = [
       contentSecurityPolicy: {
         useDefaults: true,
         directives: {
-          'connect-src': ["'self'", 'https:'],
-          'img-src': ["'self'", 'data:', 'blob:', 'res.cloudinary.com'],
-          'media-src': ["'self'", 'data:', 'blob:', 'res.cloudinary.com'],
+          'connect-src': ["'self'", 'https:', 'http:'],
+          'img-src': ["'self'", 'data:', 'blob:', 'res.cloudinary.com', 'market-assets.strapi.io'],
+          'media-src': ["'self'", 'data:', 'blob:', 'res.cloudinary.com', 'market-assets.strapi.io'],
           upgradeInsecureRequests: null,
         },
       },
