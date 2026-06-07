@@ -4,7 +4,7 @@ const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Database 
   if (env('NODE_ENV') === 'production') {
     return {
       connection: {
-        client: 'postgres',
+        client: 'postgres' as const, // 加上 as const 显式指定类型
         connection: {
           connectionString: env('DATABASE_URL'),
           ssl: { rejectUnauthorized: false },
@@ -19,7 +19,7 @@ const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Database 
   // 本地开发依然用 SQLite
   return {
     connection: {
-      client: 'sqlite',
+      client: 'sqlite' as const, // 加上 as const 显式指定类型
       connection: {
         filename: '.tmp/data.db',
       },
