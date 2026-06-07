@@ -1,5 +1,6 @@
-// config/database.js
-module.exports = ({ env }) => {
+import type { Core } from '@strapi/strapi';
+
+const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Database => {
   if (env('NODE_ENV') === 'production') {
     return {
       connection: {
@@ -26,3 +27,5 @@ module.exports = ({ env }) => {
     },
   };
 };
+
+export default config;
