@@ -1,23 +1,19 @@
-import type { Core } from '@strapi/strapi';
-
-const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Server => ({
-  host: env('HOST', '0.0.0.0'),
-  port: env.int('PORT', 1337),
-  app: {
-    keys: env.array('APP_KEYS'),
+export default [
+  'strapi::errors',
+  'strapi::security',
+  {
+    name: 'strapi::cors',
+    config: {
+      enabled: true,
+      origin: ['https://seakapparel.com', 'https://www.seakapparel.com', 'http://localhost:3000'], // 顺便把本地前端地址也加上，方便你本地调试
+      headers: ['*'],
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    },
   },
-});
-
-export default config;
-
-
-export default ({ env }) => ({
-  host: env('HOST', '0.0.0.0'),
-  port: env.int('PORT', 1337),
-  cors: {
-    enabled: true,
-    origin: ['https://seakapparel.com', 'https://www.seakapparel.com'],
-    headers: ['*'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  },
-});
+  'strapi::poweredBy',
+  'strapi::query',
+  'strapi::body',
+  'strapi::session',
+  'strapi::logger',
+  'strapi::taiload',
+];
