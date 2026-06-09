@@ -1,0 +1,28 @@
+{
+  "kind": "collectionType",
+  "collectionName": "carousel_imgs",
+  "info": {
+    "singularName": "carousel-img",
+    "pluralName": "carousel-imgs",
+    "displayName": "carousel-img"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string"
+    },
+    "img": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    }
+  }
+}
