@@ -14,6 +14,11 @@
     "name": {
       "type": "string"
     },
+    "slug": {
+      "type": "uid",
+      "targetField": "name",
+      "required": true
+    },
     "img": {
       "type": "media",
       "multiple": false,
