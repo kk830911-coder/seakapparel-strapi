@@ -51,6 +51,14 @@
         "audios"
       ]
     },
+    "cover_url": {
+      "type": "string",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
     "description": {
       "type": "text",
       "pluginOptions": {
@@ -60,18 +68,17 @@
       }
     },
     "blog_category": {
-      "type": "relation",
-      "relation": "manyToOne",
-      "target": "api::blog-category.blog-category",
-      "inversedBy": "blogs"
-    },
-    "cover_url": {
-      "type": "string",
+      "type": "enumeration",
       "pluginOptions": {
         "i18n": {
           "localized": true
         }
-      }
+      },
+      "default": "New Products",
+      "enum": [
+        "New Products",
+        "wholesale-tips"
+      ]
     }
   }
 }

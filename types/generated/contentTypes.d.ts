@@ -457,7 +457,6 @@ export interface ApiBlogCategoryBlogCategory
     };
   };
   attributes: {
-    blogs: Schema.Attribute.Relation<'oneToMany', 'api::blog.blog'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -496,10 +495,15 @@ export interface ApiBlogBlog extends Struct.CollectionTypeSchema {
     };
   };
   attributes: {
-    blog_category: Schema.Attribute.Relation<
-      'manyToOne',
-      'api::blog-category.blog-category'
-    >;
+    blog_category: Schema.Attribute.Enumeration<
+      ['New Products', 'wholesale-tips']
+    > &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }> &
+      Schema.Attribute.DefaultTo<'New Products'>;
     content: Schema.Attribute.Blocks &
       Schema.Attribute.SetPluginOptions<{
         i18n: {
