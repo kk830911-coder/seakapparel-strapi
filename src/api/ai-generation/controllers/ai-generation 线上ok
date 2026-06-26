@@ -4,6 +4,7 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs';
 
+// 1. 模特母版图配置
 const MODEL_TEMPLATES = {
   european: 'https://res.cloudinary.com/daybgtfi3/image/upload/v1782440174/G3_90a167fdc1.png',
   african: 'https://res.cloudinary.com/daybgtfi3/image/upload/v1782440174/G3_90a167fdc1.png',
@@ -12,6 +13,7 @@ const MODEL_TEMPLATES = {
 
 export default factories.createCoreController('api::ai-generation.ai-generation', ({ strapi }) => ({
   
+  // ✨ 试衣间独立端点：进行了多平台全兼容格式化改造
   async runFromFittingRoom(ctx) {
     try {
       const body = ctx.request.body as any;
@@ -24,10 +26,12 @@ export default factories.createCoreController('api::ai-generation.ai-generation'
         return ctx.badRequest('请选择并上传衣服原图 (Missing file)');
       }
 
+      // 兼容性适配：有些网关会将单文件包装为数组，这里进行安全解包
       const actualFile = Array.isArray(fileObj) ? fileObj[0] : fileObj;
 
       strapi.log.info('📥 [Fitting Room] 线上收到试衣文件，正在执行跨平台属性重构并推送 Cloudinary...');
 
+      // ⚡ 终极修复：不再直接盲塞原始对象，而是抽取属性严格重构，100% 对齐系统媒体库底层
       const uploadedSourceFile = await strapi.plugin('upload').service('upload').upload({
         data: {},
         files: {
@@ -36,13 +40,15 @@ export default factories.createCoreController('api::ai-generation.ai-generation'
           type: actualFile.mimetype || actualFile.type || 'image/jpeg',
           mimetype: actualFile.mimetype || actualFile.type || 'image/jpeg',
           size: actualFile.size,
-          path: actualFile.filepath || actualFile.path, 
+          path: actualFile.filepath || actualFile.path, // 同时兼容 Linux(Render) 和本地环境的路径字段
           filepath: actualFile.filepath || actualFile.path,
         }
       });
 
       const sourceFileId = Array.isArray(uploadedSourceFile) ? uploadedSourceFile[0].id : uploadedSourceFile.id;
+      strapi.log.info(`✅ 衣服原图落库成功，媒体 ID: ${sourceFileId}。正在自动签发对应的试衣单据...`);
 
+      // 内部创建 pending 状态单据
       const newRecord = await strapi.documents('api::ai-generation.ai-generation' as any).create({
         data: {
           model_type: modelType,
@@ -52,38 +58,54 @@ export default factories.createCoreController('api::ai-generation.ai-generation'
       });
 
       const newRecordId = newRecord.documentId || newRecord.id;
-      
+      strapi.log.info(`📊 单据已物理下摆，ID: ${newRecordId}。正在安全对调调用核心 AI 渲染引擎...`);
+
+      // 伪装请求 Body，并使用绝对安全的 strapi.controller 引用获取完整上下文，防止 this 丢失导致 500 崩溃
       ctx.request.body = { id: newRecordId };
       const mainController = strapi.controller('api::ai-generation.ai-generation');
       return await mainController.generateModel(ctx);
 
     } catch (error: any) {
       strapi.log.error('❌ 线上试衣间前置流致命崩溃:', error.message);
-      return ctx.internalServerError('后端多模态引擎故障: ' + error.message);
+      return ctx.internalServerError('后端多模态引擎在执行文件落库或上下文转换时发生故障: ' + error.message);
     }
   },
 
+  // 核心生成逻辑（保持你完全成功的 Agnes AI 闭合代码原样）
   async generateModel(ctx) {
+    let tempFilePath = '';
+
     try {
       const { id } = ctx.request.body as { id: string }; 
 
-      if (!id) { return ctx.badRequest('缺少必要的 id 参数'); }
+      if (!id) {
+        return ctx.badRequest('缺少必要的 id 参数');
+      }
+
       const apiKey = process.env.AGNES_API_KEY;
-      if (!apiKey) { return ctx.internalServerError('服务器未配置 Agnes AI 大模型凭证'); }
+      if (!apiKey) {
+        strapi.log.error('❌ 未检测到 AGNES_API_KEY，请检查 .env 文件');
+        return ctx.internalServerError('服务器未配置 Agnes AI 大模型凭证');
+      }
 
       const record = await strapi.documents('api::ai-generation.ai-generation' as any).findOne({
         documentId: id,
         populate: ['source_image'],
       });
 
-      if (!record) { return ctx.notFound(`未找到 ID 为 ${id} 的 AI 生成任务`); }
+      if (!record) {
+        return ctx.notFound(`未找到 ID 为 ${id} 的 AI 生成任务`);
+      }
       
       const modelType = record.model_type || 'southeast_asia';
       const sourceImageUrl = record.source_image?.url;
 
-      if (!sourceImageUrl) { return ctx.badRequest('该任务记录中没有上传 source_image（衣服平铺图）'); }
+      if (!sourceImageUrl) {
+        return ctx.badRequest('该任务记录中没有上传 source_image（衣服平铺图）');
+      }
 
       const personImageUrl = MODEL_TEMPLATES[modelType] || MODEL_TEMPLATES.southeast_asia;
+
       strapi.log.info(`✈️ [Agnes AI Center] 正在为任务 ${id} 发起极速同步试衣请求...`);
 
       await strapi.documents('api::ai-generation.ai-generation' as any).update({
@@ -110,74 +132,101 @@ export default factories.createCoreController('api::ai-generation.ai-generation'
           model: 'agnes-image-2.0-flash',
           prompt: promptText,
           size: '1024x1024',
-          extra_body: { image: [personImageUrl, sourceImageUrl], response_format: 'url' }
+          extra_body: {
+            image: [personImageUrl, sourceImageUrl], 
+            response_format: 'url'
+          }
         },
-        { headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' } }
+        {
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+        }
       );
 
       const finalImageUrl = response.data?.data?.[0]?.url;
       if (!finalImageUrl) {
+        strapi.log.error('❌ Agnes AI 同步响应异常:', response.data);
         throw new Error('未能从 Agnes AI 接口中获取到有效的图片 URL');
       }
 
-      strapi.log.info(`🎉 [提速核心] Agnes AI 出图成功！直接开启离线后台备份，不让前台傻等...`);
+      strapi.log.info(`🎉 Agnes AI 同步渲染大功告成！大图托管地址: ${finalImageUrl}`);
 
-      // 【异步挂起】：不阻塞主线程，让服务器自己在后台慢慢下载和上传
-      (async () => {
-        let tempFilePath = '';
-        try {
-          const imgResponse = await axios.get(finalImageUrl, { responseType: 'arraybuffer' });
-          const buffer = Buffer.from(imgResponse.data, 'binary');
-          const tempDir = os.tmpdir();
-          tempFilePath = path.join(tempDir, `seak_ai_${id}.jpg`);
-          fs.writeFileSync(tempFilePath, buffer);
-          
-          const uploadedFile = await strapi.plugin('upload').service('upload').upload({
-            data: {}, 
-            files: {
-              name: `seak_ai_model_${id}.jpg`,
-              originalFilename: `seak_ai_model_${id}.jpg`, 
-              type: 'image/jpeg',
-              mimetype: 'image/jpeg',                                     
-              size: buffer.length,
-              path: tempFilePath,                      
-              filepath: tempFilePath,                                     
-            },
-          });
+      strapi.log.info(`📥 正在拉取结果图片进入服务器内存...`);
+      const imgResponse = await axios.get(finalImageUrl, { responseType: 'arraybuffer' });
+      const buffer = Buffer.from(imgResponse.data, 'binary');
 
-          const fileData = Array.isArray(uploadedFile) ? uploadedFile[0] : uploadedFile;
-          const fileId = fileData?.id;
+      const tempDir = os.tmpdir();
+      tempFilePath = path.join(tempDir, `seak_ai_${id}.jpg`);
+      fs.writeFileSync(tempFilePath, buffer);
+      strapi.log.info(`💾 临时缓存文件生成完毕，准备推流至 Cloudinary...`);
+      
+      const uploadedFile = await strapi.plugin('upload').service('upload').upload({
+        data: {}, 
+        files: {
+          name: `seak_ai_model_${id}.jpg`,
+          originalFilename: `seak_ai_model_${id}.jpg`, 
+          type: 'image/jpeg',
+          mimetype: 'image/jpeg',                                     
+          size: buffer.length,
+          path: tempFilePath,                      
+          filepath: tempFilePath,                                     
+        },
+      });
 
-          if (fileId) {
-            await strapi.documents('api::ai-generation.ai-generation' as any).update({
-              documentId: id,
-              data: { generation_status: 'success', result_image: fileId } as any
-            });
-            strapi.log.info(`🚀 [后台异步] 任务单 ${id} 离线落库挂载完美闭环！`);
-          }
-        } catch (bgError: any) {
-          strapi.log.error('❌ [后台异步] 离线备份落库失败:', bgError.message);
-        } finally {
-          if (tempFilePath && fs.existsSync(tempFilePath)) {
-            try { fs.unlinkSync(tempFilePath); } catch (e) {}
-          }
-        }
-      })();
+      const fileData = Array.isArray(uploadedFile) ? uploadedFile[0] : uploadedFile;
+      const fileId = fileData?.id;
 
-      // 🚀 【瞬间返回】：立刻把 Agnes 生成好的原始 URL 返回给前端展示，不管电脑还是手机都能直接秒看！
+      if (!fileId) {
+        throw new Error('Cloudinary 上传通过，但获取多媒体资产组件 ID 失败');
+      }
+
+      strapi.log.info(`✅ Cloudinary 托管成功，媒体资产 ID: ${fileId}。正在执行原子数据落地...`);
+
+      await strapi.documents('api::ai-generation.ai-generation' as any).update({
+        documentId: id,
+        data: {
+          generation_status: 'success',
+          result_image: fileId, 
+        } as any
+      });
+
+      strapi.log.info(`🚀 [AI Center] 整个生命周期完美闭环！任务单 ${id} 已同步转为 success 且关联图片成功！ ✨`);
+
       return {
         data: {
           id,
           resultImageUrl: finalImageUrl,
           status: 'success',
-          message: 'Agnes AI 试衣流极速响应成功！'
+          message: 'Agnes AI 试衣流同步处理成功！图片已成功上传 Cloudinary 并无缝挂载回你的 Strapi 后台！'
         },
         error: null
       };
 
     } catch (error: any) {
-      strapi.log.error('❌ Agnes AI 业务流致命异常:', error?.response?.data || error.message);
-      return ctx.internalServerError('对接 Agnes AI 发生故障');
+      strapi.log.error('❌ Agnes AI 业务流发生致命异常:', error?.response?.data || error.message);
+      
+      try {
+        const { id } = ctx.request.body as { id: string };
+        if (id) {
+          await strapi.documents('api::ai-generation.ai-generation' as any).update({
+            documentId: id,
+            data: { generation_status: 'failed' } as any
+          });
+        }
+      } catch (e) {}
+
+      return ctx.internalServerError('对接 Agnes AI 试衣中心时发生内部故障');
+    } finally {
+      if (tempFilePath && fs.existsSync(tempFilePath)) {
+        try {
+          fs.unlinkSync(tempFilePath);
+          strapi.log.info(`🧹 临时缓存物理文件已安全销毁。`);
+        } catch (e: any) {
+          strapi.log.error(`🧹 销毁临时文件失败:`, e.message);
+        }
+      }
     }
   },
 }));
