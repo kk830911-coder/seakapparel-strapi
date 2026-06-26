@@ -4,6 +4,7 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs';
 
+// 1. 模特母版图配置
 const MODEL_TEMPLATES = {
   european: 'https://res.cloudinary.com/daybgtfi3/image/upload/v1782440174/G3_90a167fdc1.png',
   african: 'https://res.cloudinary.com/daybgtfi3/image/upload/v1782440174/G3_90a167fdc1.png',
@@ -12,6 +13,7 @@ const MODEL_TEMPLATES = {
 
 export default factories.createCoreController('api::ai-generation.ai-generation', ({ strapi }) => ({
   
+  // 试衣间独立端点：处理前端传递的压缩图片
   async runFromFittingRoom(ctx) {
     try {
       const body = ctx.request.body as any;
@@ -42,6 +44,7 @@ export default factories.createCoreController('api::ai-generation.ai-generation'
       });
 
       const sourceFileId = Array.isArray(uploadedSourceFile) ? uploadedSourceFile[0].id : uploadedSourceFile.id;
+      strapi.log.info(`✅ 衣服原图落库成功，媒体 ID: ${sourceFileId}。正在自动签发对应的试衣单据...`);
 
       const newRecord = await strapi.documents('api::ai-generation.ai-generation' as any).create({
         data: {
@@ -52,7 +55,8 @@ export default factories.createCoreController('api::ai-generation.ai-generation'
       });
 
       const newRecordId = newRecord.documentId || newRecord.id;
-      
+      strapi.log.info(`📊 单据已物理下摆，ID: ${newRecordId}。正在安全对调调用核心 AI 渲染引擎...`);
+
       ctx.request.body = { id: newRecordId };
       const mainController = strapi.controller('api::ai-generation.ai-generation');
       return await mainController.generateModel(ctx);
@@ -63,6 +67,7 @@ export default factories.createCoreController('api::ai-generation.ai-generation'
     }
   },
 
+  // 核心生成逻辑（Agnes AI 同步超速出图）
   async generateModel(ctx) {
     try {
       const { id } = ctx.request.body as { id: string }; 
@@ -122,7 +127,7 @@ export default factories.createCoreController('api::ai-generation.ai-generation'
 
       strapi.log.info(`🎉 [提速核心] Agnes AI 出图成功！直接开启离线后台备份，不让前台傻等...`);
 
-      // 【异步挂起】：不阻塞主线程，让服务器自己在后台慢慢下载和上传
+      // 【异步挂起】不阻塞主进程，让服务器自己在后台慢慢下载和上传 Cloudinary
       (async () => {
         let tempFilePath = '';
         try {
@@ -164,7 +169,7 @@ export default factories.createCoreController('api::ai-generation.ai-generation'
         }
       })();
 
-      // 🚀 【瞬间返回】：立刻把 Agnes 生成好的原始 URL 返回给前端展示，不管电脑还是手机都能直接秒看！
+      // 立刻把生成的图片大图 URL 返回给前端展示，PC、移动端同时享受极致秒传体验
       return {
         data: {
           id,
@@ -175,6 +180,7 @@ export default factories.createCoreController('api::ai-generation.ai-generation'
         error: null
       };
 
+    // ✨ 这里的修剪改好了！去掉了多余的单词
     } catch (error: any) {
       strapi.log.error('❌ Agnes AI 业务流致命异常:', error?.response?.data || error.message);
       return ctx.internalServerError('对接 Agnes AI 发生故障');
