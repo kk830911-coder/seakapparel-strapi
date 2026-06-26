@@ -13,42 +13,32 @@ const MODEL_TEMPLATES = {
 
 export default factories.createCoreController('api::ai-generation.ai-generation', ({ strapi }) => ({
   
-  // ✨ 试衣间独立端点：进行了多平台全兼容格式化改造
+  // ✨ 新增：专门供给前台自主试衣间调用的万能复合端点（无脑免签通过 401/403）
   async runFromFittingRoom(ctx) {
     try {
+      // 从 multipart 请求中提取衣服原文件和模特人种参数
       const body = ctx.request.body as any;
       const files = ctx.request.files as any;
       
       const modelType = body?.modelType || 'southeast_asia';
-      const fileObj = files?.file; 
+      const fileObj = files?.file; // 对应前端表单中的 key
 
       if (!fileObj) {
         return ctx.badRequest('请选择并上传衣服原图 (Missing file)');
       }
 
-      // 兼容性适配：有些网关会将单文件包装为数组，这里进行安全解包
-      const actualFile = Array.isArray(fileObj) ? fileObj[0] : fileObj;
+      strapi.log.info('📥 [Fitting Room] 前台自主试衣图片已到达服务器，正在托管至系统媒体库...');
 
-      strapi.log.info('📥 [Fitting Room] 线上收到试衣文件，正在执行跨平台属性重构并推送 Cloudinary...');
-
-      // ⚡ 终极修复：不再直接盲塞原始对象，而是抽取属性严格重构，100% 对齐系统媒体库底层
+      // 内部提升系统最高权限上传，完美绕过外部 403 限制
       const uploadedSourceFile = await strapi.plugin('upload').service('upload').upload({
         data: {},
-        files: {
-          name: actualFile.originalFilename || actualFile.name || `source_${Date.now()}.jpg`,
-          originalFilename: actualFile.originalFilename || actualFile.name || `source_${Date.now()}.jpg`,
-          type: actualFile.mimetype || actualFile.type || 'image/jpeg',
-          mimetype: actualFile.mimetype || actualFile.type || 'image/jpeg',
-          size: actualFile.size,
-          path: actualFile.filepath || actualFile.path, // 同时兼容 Linux(Render) 和本地环境的路径字段
-          filepath: actualFile.filepath || actualFile.path,
-        }
+        files: fileObj
       });
 
       const sourceFileId = Array.isArray(uploadedSourceFile) ? uploadedSourceFile[0].id : uploadedSourceFile.id;
-      strapi.log.info(`✅ 衣服原图落库成功，媒体 ID: ${sourceFileId}。正在自动签发对应的试衣单据...`);
+      strapi.log.info(`✅ 衣服原图存储 Cloudinary 成功，生成关联组件 ID: ${sourceFileId}，准备初始化试衣表单单据...`);
 
-      // 内部创建 pending 状态单据
+      // 内部免鉴权直接创建初始单据记录
       const newRecord = await strapi.documents('api::ai-generation.ai-generation' as any).create({
         data: {
           model_type: modelType,
@@ -58,20 +48,19 @@ export default factories.createCoreController('api::ai-generation.ai-generation'
       });
 
       const newRecordId = newRecord.documentId || newRecord.id;
-      strapi.log.info(`📊 单据已物理下摆，ID: ${newRecordId}。正在安全对调调用核心 AI 渲染引擎...`);
+      strapi.log.info(`📊 试衣单据物理落地完毕，指派内部 ID: ${newRecordId}。立刻借尸还魂复用核心 AI 生成方法...`);
 
-      // 伪装请求 Body，并使用绝对安全的 strapi.controller 引用获取完整上下文，防止 this 丢失导致 500 崩溃
+      // 伪装请求 ctx.request.body 里的 id 结构，直接转接调用你原本成功的核心生成函数
       ctx.request.body = { id: newRecordId };
-      const mainController = strapi.controller('api::ai-generation.ai-generation');
-      return await mainController.generateModel(ctx);
+      return await (this as any).generateModel(ctx);
 
     } catch (error: any) {
-      strapi.log.error('❌ 线上试衣间前置流致命崩溃:', error.message);
-      return ctx.internalServerError('后端多模态引擎在执行文件落库或上下文转换时发生故障: ' + error.message);
+      strapi.log.error('❌ 试衣间前置流发生异常失败:', error.message);
+      return ctx.internalServerError('万能多模态试衣引擎在后端初始化失败: ' + error.message);
     }
   },
 
-  // 核心生成逻辑（保持你完全成功的 Agnes AI 闭合代码原样）
+  // 你的核心成功生成逻辑（保持原样，原封不动）
   async generateModel(ctx) {
     let tempFilePath = '';
 
@@ -88,6 +77,7 @@ export default factories.createCoreController('api::ai-generation.ai-generation'
         return ctx.internalServerError('服务器未配置 Agnes AI 大模型凭证');
       }
 
+      // 2. 从数据库读取当前试衣单据
       const record = await strapi.documents('api::ai-generation.ai-generation' as any).findOne({
         documentId: id,
         populate: ['source_image'],
@@ -108,24 +98,27 @@ export default factories.createCoreController('api::ai-generation.ai-generation'
 
       strapi.log.info(`✈️ [Agnes AI Center] 正在为任务 ${id} 发起极速同步试衣请求...`);
 
+      // 把单据更新为处理中状态
       await strapi.documents('api::ai-generation.ai-generation' as any).update({
         documentId: id,
         data: { generation_status: 'processing' } as any,
       });
 
+      // 3. 升级为【通用结构锁定提示词】
       let promptText = '';
       const strictConstraints = 'E-commerce fashion catalog photography. The model from the first reference image is wearing the EXACT clothing from the second reference image. Completely and strictly preserve 100% of the original clothing design, including its exact original color, fabric texture, patterns, sleeve style, collar type, and tailoring details without any alteration. Do not redesign, do not modify the garment. Clean studio gray background, high-end commercial quality, absolutely NO text, NO letters, NO words.';
 
-      if (modelType === 'european') {
-        promptText = `Professional European female fashion model. ${strictConstraints}`;
-      } else if (modelType === 'african') {
-        promptText = `Professional African female fashion model. ${strictConstraints}`;
-      } else if (modelType === 'southeast_asia') {
-        promptText = `Professional Southeast Asian female fashion model. ${strictConstraints}`;
-      } else {
-        promptText = `Professional female fashion model. ${strictConstraints}`;
-      }
+          if (modelType === 'european') {
+            promptText = `Professional European female fashion model. ${strictConstraints}`;
+          } else if (modelType === 'african') {
+            promptText = `Professional African female fashion model. ${strictConstraints}`;
+          } else if (modelType === 'southeast_asia') {
+            promptText = `Professional Southeast Asian female fashion model. ${strictConstraints}`;
+          } else {
+            promptText = `Professional female fashion model. ${strictConstraints}`;
+          }
 
+      // 4. 调用 Agnes AI 官方图像编辑与多图融合接口
       const response = await axios.post(
         'https://apihub.agnes-ai.com/v1/images/generations',
         {
@@ -153,6 +146,7 @@ export default factories.createCoreController('api::ai-generation.ai-generation'
 
       strapi.log.info(`🎉 Agnes AI 同步渲染大功告成！大图托管地址: ${finalImageUrl}`);
 
+      // 5. 同步下载生成的图片数据流
       strapi.log.info(`📥 正在拉取结果图片进入服务器内存...`);
       const imgResponse = await axios.get(finalImageUrl, { responseType: 'arraybuffer' });
       const buffer = Buffer.from(imgResponse.data, 'binary');
@@ -162,6 +156,7 @@ export default factories.createCoreController('api::ai-generation.ai-generation'
       fs.writeFileSync(tempFilePath, buffer);
       strapi.log.info(`💾 临时缓存文件生成完毕，准备推流至 Cloudinary...`);
       
+      // 6. 推送多媒体至媒体库
       const uploadedFile = await strapi.plugin('upload').service('upload').upload({
         data: {}, 
         files: {
@@ -184,6 +179,7 @@ export default factories.createCoreController('api::ai-generation.ai-generation'
 
       strapi.log.info(`✅ Cloudinary 托管成功，媒体资产 ID: ${fileId}。正在执行原子数据落地...`);
 
+      // 7. 更新单据状态与结果图关联
       await strapi.documents('api::ai-generation.ai-generation' as any).update({
         documentId: id,
         data: {
