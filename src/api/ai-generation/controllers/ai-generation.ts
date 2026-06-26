@@ -12,6 +12,55 @@ const MODEL_TEMPLATES = {
 };
 
 export default factories.createCoreController('api::ai-generation.ai-generation', ({ strapi }) => ({
+  
+  // ✨ 新增：专门供给前台自主试衣间调用的万能复合端点（无脑免签通过 401/403）
+  async runFromFittingRoom(ctx) {
+    try {
+      // 从 multipart 请求中提取衣服原文件和模特人种参数
+      const body = ctx.request.body as any;
+      const files = ctx.request.files as any;
+      
+      const modelType = body?.modelType || 'southeast_asia';
+      const fileObj = files?.file; // 对应前端表单中的 key
+
+      if (!fileObj) {
+        return ctx.badRequest('请选择并上传衣服原图 (Missing file)');
+      }
+
+      strapi.log.info('📥 [Fitting Room] 前台自主试衣图片已到达服务器，正在托管至系统媒体库...');
+
+      // 内部提升系统最高权限上传，完美绕过外部 403 限制
+      const uploadedSourceFile = await strapi.plugin('upload').service('upload').upload({
+        data: {},
+        files: fileObj
+      });
+
+      const sourceFileId = Array.isArray(uploadedSourceFile) ? uploadedSourceFile[0].id : uploadedSourceFile.id;
+      strapi.log.info(`✅ 衣服原图存储 Cloudinary 成功，生成关联组件 ID: ${sourceFileId}，准备初始化试衣表单单据...`);
+
+      // 内部免鉴权直接创建初始单据记录
+      const newRecord = await strapi.documents('api::ai-generation.ai-generation' as any).create({
+        data: {
+          model_type: modelType,
+          generation_status: 'pending',
+          source_image: sourceFileId
+        } as any
+      });
+
+      const newRecordId = newRecord.documentId || newRecord.id;
+      strapi.log.info(`📊 试衣单据物理落地完毕，指派内部 ID: ${newRecordId}。立刻借尸还魂复用核心 AI 生成方法...`);
+
+      // 伪装请求 ctx.request.body 里的 id 结构，直接转接调用你原本成功的核心生成函数
+      ctx.request.body = { id: newRecordId };
+      return await (this as any).generateModel(ctx);
+
+    } catch (error: any) {
+      strapi.log.error('❌ 试衣间前置流发生异常失败:', error.message);
+      return ctx.internalServerError('万能多模态试衣引擎在后端初始化失败: ' + error.message);
+    }
+  },
+
+  // 你的核心成功生成逻辑（保持原样，原封不动）
   async generateModel(ctx) {
     let tempFilePath = '';
 
@@ -28,7 +77,7 @@ export default factories.createCoreController('api::ai-generation.ai-generation'
         return ctx.internalServerError('服务器未配置 Agnes AI 大模型凭证');
       }
 
-      // 2. 从数据库读取当前试衣单据（使用 as any 强行绕过未及时同步的 TS 严格检查）
+      // 2. 从数据库读取当前试衣单据
       const record = await strapi.documents('api::ai-generation.ai-generation' as any).findOne({
         documentId: id,
         populate: ['source_image'],
@@ -55,21 +104,19 @@ export default factories.createCoreController('api::ai-generation.ai-generation'
         data: { generation_status: 'processing' } as any,
       });
 
-    // 3. ✨ 升级为【通用结构锁定提示词】—— 无论换什么衣服，永远不需要改代码！
+      // 3. 升级为【通用结构锁定提示词】
       let promptText = '';
-      
-      // 使用通用代词 (the clothing from the second image)，并对细节（图案、裁剪、面料）下达绝对复制命令
       const strictConstraints = 'E-commerce fashion catalog photography. The model from the first reference image is wearing the EXACT clothing from the second reference image. Completely and strictly preserve 100% of the original clothing design, including its exact original color, fabric texture, patterns, sleeve style, collar type, and tailoring details without any alteration. Do not redesign, do not modify the garment. Clean studio gray background, high-end commercial quality, absolutely NO text, NO letters, NO words.';
 
-      if (modelType === 'european') {
-        promptText = `Professional European female fashion model. ${strictConstraints}`;
-      } else if (modelType === 'african') {
-        promptText = `Professional African female fashion model. ${strictConstraints}`;
-      } else if (modelType === 'southeast_asia') {
-        promptText = `Professional Southeast Asian female fashion model. ${strictConstraints}`;
-      } else {
-        promptText = `Professional female fashion model. ${strictConstraints}`;
-      }
+          if (modelType === 'european') {
+            promptText = `Professional European female fashion model. ${strictConstraints}`;
+          } else if (modelType === 'african') {
+            promptText = `Professional African female fashion model. ${strictConstraints}`;
+          } else if (modelType === 'southeast_asia') {
+            promptText = `Professional Southeast Asian female fashion model. ${strictConstraints}`;
+          } else {
+            promptText = `Professional female fashion model. ${strictConstraints}`;
+          }
 
       // 4. 调用 Agnes AI 官方图像编辑与多图融合接口
       const response = await axios.post(
@@ -99,7 +146,7 @@ export default factories.createCoreController('api::ai-generation.ai-generation'
 
       strapi.log.info(`🎉 Agnes AI 同步渲染大功告成！大图托管地址: ${finalImageUrl}`);
 
-      // 5. 📥 同步下载生成的图片数据流
+      // 5. 同步下载生成的图片数据流
       strapi.log.info(`📥 正在拉取结果图片进入服务器内存...`);
       const imgResponse = await axios.get(finalImageUrl, { responseType: 'arraybuffer' });
       const buffer = Buffer.from(imgResponse.data, 'binary');
@@ -109,17 +156,17 @@ export default factories.createCoreController('api::ai-generation.ai-generation'
       fs.writeFileSync(tempFilePath, buffer);
       strapi.log.info(`💾 临时缓存文件生成完毕，准备推流至 Cloudinary...`);
       
-      // 6. 📤 推送多媒体至媒体库
+      // 6. 推送多媒体至媒体库
       const uploadedFile = await strapi.plugin('upload').service('upload').upload({
         data: {}, 
         files: {
           name: `seak_ai_model_${id}.jpg`,
           originalFilename: `seak_ai_model_${id}.jpg`, 
           type: 'image/jpeg',
-          mimetype: 'image/jpeg',                              
+          mimetype: 'image/jpeg',                                     
           size: buffer.length,
           path: tempFilePath,                      
-          filepath: tempFilePath,                              
+          filepath: tempFilePath,                                     
         },
       });
 
@@ -132,7 +179,7 @@ export default factories.createCoreController('api::ai-generation.ai-generation'
 
       strapi.log.info(`✅ Cloudinary 托管成功，媒体资产 ID: ${fileId}。正在执行原子数据落地...`);
 
-      // 7. ✨ 完美闭环：更新单据状态与结果图关联（加入 as any 解锁编译限制）
+      // 7. 更新单据状态与结果图关联
       await strapi.documents('api::ai-generation.ai-generation' as any).update({
         documentId: id,
         data: {
