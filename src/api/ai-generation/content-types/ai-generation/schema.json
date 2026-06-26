@@ -1,0 +1,56 @@
+{
+  "kind": "collectionType",
+  "collectionName": "ai_generations",
+  "info": {
+    "singularName": "ai-generation",
+    "pluralName": "ai-generations",
+    "displayName": "AI Generation"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "source_image": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "model_type": {
+      "type": "enumeration",
+      "enum": [
+        "european",
+        "african",
+        "southeast_asia"
+      ]
+    },
+    "generation_status": {
+      "type": "enumeration",
+      "default": "pending",
+      "enum": [
+        "pending",
+        "processing",
+        "success",
+        "failed"
+      ]
+    },
+    "result_image": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "prompt": {
+      "type": "text"
+    },
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product.product",
+      "inversedBy": "ai_generations"
+    }
+  }
+}

@@ -1,0 +1,228 @@
+import { factories } from '@strapi/strapi';
+import axios from 'axios';
+import os from 'os';
+import path from 'path';
+import fs from 'fs';
+
+// 1. 模特母版图配置
+const MODEL_TEMPLATES = {
+  european: 'https://res.cloudinary.com/daybgtfi3/image/upload/v1782383159/1_3b55d4874d.jpg',
+  african: 'https://res.cloudinary.com/daybgtfi3/image/upload/v1782383159/2_a1236fdd82.jpg',
+  southeast_asia: 'https://res.cloudinary.com/daybgtfi3/image/upload/v1782383160/3_75ff2a68b9.jpg',
+};
+
+export default factories.createCoreController('api::ai-generation.ai-generation', ({ strapi }) => ({
+  async generateModel(ctx) {
+    try {
+      const { id } = ctx.request.body as { id: string }; 
+
+      if (!id) {
+        return ctx.badRequest('缺少必要的 id 参数');
+      }
+
+      const apiKey = process.env.DASHSCOPE_API_KEY;
+      if (!apiKey) {
+        strapi.log.error('❌ 未检测到 DASHSCOPE_API_KEY，请检查 .env 文件');
+        return ctx.internalServerError('服务器未配置阿里云大模型凭证');
+      }
+
+      // 2. 从数据库读取单据
+      const record = await strapi.documents('api::ai-generation.ai-generation').findOne({
+        documentId: id,
+        populate: ['source_image'],
+      });
+
+      if (!record) {
+        return ctx.notFound(`未找到 ID 为 ${id} 的 AI 生成任务`);
+      }
+      
+      const modelType = record.model_type || 'southeast_asia';
+      const sourceImageUrl = record.source_image?.url;
+
+      if (!sourceImageUrl) {
+        return ctx.badRequest('该任务记录中没有上传 source_image（衣服平铺图）');
+      }
+
+      const personImageUrl = MODEL_TEMPLATES[modelType] || MODEL_TEMPLATES.southeast_asia;
+
+      strapi.log.info(`✈️ [AI Center] 准备为任务 ${id} 发起试衣请求。模特类型: [${modelType}]`);
+
+      // 3. 调用阿里云百炼高级试衣模型
+      const response = await axios.post(
+        'https://dashscope.aliyuncs.com/api/v1/services/aigc/image2image/image-synthesis',
+        {
+          model: 'aitryon-plus',
+          input: {
+            person_image_url: personImageUrl,
+            top_garment_url: sourceImageUrl,
+          }
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'X-DashScope-Async': 'enable',
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      const taskId = response.data?.output?.task_id;
+      if (!taskId) {
+        strapi.log.error('❌ 阿里云未成功返回 task_id:', response.data);
+        return ctx.badRequest('阿里云百炼服务响应异常，创建任务失败');
+      }
+
+      strapi.log.info(`✅ 阿里云任务创建成功! Task ID: ${taskId}`);
+
+      // 4. 更新单据状态为 processing
+      await strapi.documents('api::ai-generation.ai-generation').update({
+        documentId: id,
+        data: {
+          generation_status: 'processing',
+        },
+      });
+
+      // 5. 启动异步轮询器
+      runBackgroundPolling(id, taskId, apiKey, strapi);
+
+      return {
+        data: {
+          id,
+          aliTaskId: taskId,
+          status: 'processing',
+          message: '阿里云试衣任务已全面提交！后端正在异步轮询渲染并自动回写媒体库，可在后台查看进度。'
+        },
+        error: null
+      };
+
+    } catch (error: any) {
+      strapi.log.error('❌ generateModel 核心业务出错:', error?.response?.data || error.message);
+      return ctx.internalServerError('对接阿里云平台时发生内部异常');
+    }
+  },
+}));
+
+// =========================================================================
+// 独立辅助业务函数
+// =========================================================================
+
+// 🛡️ 后台状态轮询器
+async function runBackgroundPolling(documentId: string, taskId: string, apiKey: string, strapi: any) {
+  const maxAttempts = 30;
+  let attempts = 0;
+
+  const interval = setInterval(async () => {
+    attempts++;
+    strapi.log.info(`⏳ [后台轮询] 任务 [${documentId}] 正在进行第 ${attempts}/${maxAttempts} 次阿里云状态同步...`);
+
+    try {
+      const checkRes = await axios.get(
+        `https://dashscope.aliyuncs.com/api/v1/tasks/${taskId}`,
+        {
+          headers: { 'Authorization': `Bearer ${apiKey}` }
+        }
+      );
+
+      const taskStatus = checkRes.data?.output?.task_status;
+      strapi.log.info(`📊 阿里云返回当前实时状态: [${taskStatus}]`);
+
+      if (taskStatus === 'SUCCEEDED') {
+        clearInterval(interval);
+        const finalImageUrl = checkRes.data?.output?.image_url;
+        strapi.log.info(`🎉 阿里云渲染成功！开始提取最终大图: ${finalImageUrl}`);
+        
+        // 触发全新升级的 V5 专属上传与 Document 关联函数
+        await downloadAndUploadToStrapi(documentId, finalImageUrl, strapi);
+
+      } else if (taskStatus === 'FAILED' || taskStatus === 'UNKNOWN') {
+        clearInterval(interval);
+        strapi.log.error(`❌ 阿里云内部渲染失败:`, checkRes.data?.output);
+        await strapi.documents('api::ai-generation.ai-generation').update({
+          documentId,
+          data: { generation_status: 'failed' }
+        });
+      }
+
+      if (attempts >= maxAttempts) {
+        clearInterval(interval);
+        strapi.log.error(`❌ 轮询超时！任务在 2.5 分钟内未渲染完成。`);
+        await strapi.documents('api::ai-generation.ai-generation').update({
+          documentId,
+          data: { generation_status: 'failed' }
+        });
+      }
+
+    } catch (err: any) {
+      strapi.log.error(`❌ 轮询网络或内部发生错误:`, err.message);
+    }
+  }, 5000);
+}
+
+// 📥 下载并使用 V5 规范回写多媒体和单据关联
+async function downloadAndUploadToStrapi(documentId: string, imageUrl: string, strapi: any) {
+  const tempDir = os.tmpdir();
+  const tempFilePath = path.join(tempDir, `seak_ai_${documentId}.jpg`);
+
+  try {
+    strapi.log.info(`📥 正在拉取阿里云生成的图片进入服务器内存...`);
+    const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+    const buffer = Buffer.from(response.data, 'binary');
+
+    fs.writeFileSync(tempFilePath, buffer);
+    strapi.log.info(`💾 临时物理文件已生成，开始同步推送至 Cloudinary: ${tempFilePath}`);
+    
+    // 🌟 1. 纯粹地将媒体资产推送到后台媒体库（不在这里传 ref 和 field，避免底层多态强校验 Bug）
+    const uploadedFile = await strapi.plugin('upload').service('upload').upload({
+      data: {}, 
+      files: {
+        name: `seak_ai_model_${documentId}.jpg`,
+        originalFilename: `seak_ai_model_${documentId}.jpg`, 
+        type: 'image/jpeg',
+        mimetype: 'image/jpeg',                              
+        size: buffer.length,
+        path: tempFilePath,                      
+        filepath: tempFilePath,                              
+      },
+    });
+
+    // 适配 Strapi 上传服务返回的对象格式（数组或单对象）
+    const fileData = Array.isArray(uploadedFile) ? uploadedFile[0] : uploadedFile;
+    const fileId = fileData?.id;
+
+    if (!fileId) {
+      throw new Error('Cloudinary 上传成功，但未能获取到媒体组件 ID');
+    }
+
+    strapi.log.info(`✅ Cloudinary 媒体库上传成功，资产 ID: ${fileId}。正在通过 Document Service 绑定到单据...`);
+
+    // 🌟 2. 使用 Strapi v5 官方推荐的原子级 Document API 同时更新状态和图片关联字段
+    await strapi.documents('api::ai-generation.ai-generation').update({
+      documentId,
+      data: {
+        generation_status: 'success',
+        result_image: fileId, // 将刚才生成的图片 ID 直接赋给关联字段
+      }
+    });
+
+    strapi.log.info(`🚀 [AI Center] 整个生命周期完美闭环！任务单 ${documentId} 已成功转为 success 且关联图片成功！ ✨`);
+
+  } catch (uploadError: any) {
+    strapi.log.error(`❌ 资产回写或关联失败:`, uploadError?.message || uploadError);
+    try {
+      await strapi.documents('api::ai-generation.ai-generation').update({
+        documentId,
+        data: { generation_status: 'failed' }
+      });
+    } catch (e) {}
+  } finally {
+    // 安全销毁服务器临时缓存文件
+    if (fs.existsSync(tempFilePath)) {
+      try {
+        fs.unlinkSync(tempFilePath);
+        strapi.log.info(`🧹 临时缓存文件已成功安全销毁。`);
+      } catch (e: any) {
+        strapi.log.error(`🧹 销毁临时文件失败:`, e.message);
+      }
+    }
+  }
+}

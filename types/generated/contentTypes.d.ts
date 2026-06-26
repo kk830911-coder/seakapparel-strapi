@@ -440,6 +440,45 @@ export interface AdminUser extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiAiGenerationAiGeneration
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'ai_generations';
+  info: {
+    displayName: 'AI Generation';
+    pluralName: 'ai-generations';
+    singularName: 'ai-generation';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    generation_status: Schema.Attribute.Enumeration<
+      ['pending', 'processing', 'success', 'failed']
+    > &
+      Schema.Attribute.DefaultTo<'pending'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::ai-generation.ai-generation'
+    > &
+      Schema.Attribute.Private;
+    model_type: Schema.Attribute.Enumeration<
+      ['european', 'african', 'southeast_asia']
+    >;
+    product: Schema.Attribute.Relation<'manyToOne', 'api::product.product'>;
+    prompt: Schema.Attribute.Text;
+    publishedAt: Schema.Attribute.DateTime;
+    result_image: Schema.Attribute.Media<'images'>;
+    source_image: Schema.Attribute.Media<'images'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiBlogCategoryBlogCategory
   extends Struct.CollectionTypeSchema {
   collectionName: 'blog_categories';
@@ -687,6 +726,10 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
     };
   };
   attributes: {
+    ai_generations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::ai-generation.ai-generation'
+    >;
     category: Schema.Attribute.Relation<'manyToOne', 'api::category.category'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -1248,6 +1291,7 @@ declare module '@strapi/strapi' {
       'admin::transfer-token': AdminTransferToken;
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
+      'api::ai-generation.ai-generation': ApiAiGenerationAiGeneration;
       'api::blog-category.blog-category': ApiBlogCategoryBlogCategory;
       'api::blog.blog': ApiBlogBlog;
       'api::carousel-img.carousel-img': ApiCarouselImgCarouselImg;

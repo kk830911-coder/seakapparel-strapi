@@ -72,6 +72,12 @@
       "relation": "manyToOne",
       "target": "api::category.category",
       "inversedBy": "products"
+    },
+    "ai_generations": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::ai-generation.ai-generation",
+      "mappedBy": "product"
     }
   }
 }
