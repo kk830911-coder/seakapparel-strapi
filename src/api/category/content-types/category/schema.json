@@ -15,8 +15,7 @@
     },
     "slug": {
       "type": "uid",
-      "targetField": "name",
-      "required": true
+      "targetField": "name"
     },
     "products": {
       "type": "relation",
