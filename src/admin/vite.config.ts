@@ -1,7 +1,7 @@
 import { UserConfig } from 'vite';
 
-export default {
+export default (): UserConfig => ({
   build: {
     sourcemap: true,
   },
-} satisfies UserConfig;
+});
