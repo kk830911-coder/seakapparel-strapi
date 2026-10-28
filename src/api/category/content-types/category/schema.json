@@ -12,7 +12,7 @@
   "pluginOptions": {},
   "attributes": {
     "name": {
-      "type": "string"
+      "type": "text"
     },
     "slug": {
       "type": "uid",
