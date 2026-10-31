@@ -24,6 +24,14 @@
     "price": {
       "type": "decimal"
     },
+    "priceTiers": {
+      "type": "component",
+      "repeatable": true,
+      "component": "shared.price-tier"
+    },
+    "priceNote": {
+      "type": "text"
+    },
     "moq": {
       "type": "integer"
     },

@@ -1,0 +1,27 @@
+{
+  "collectionName": "components_shared_price_tiers",
+  "info": {
+    "displayName": "Price Tier",
+    "icon": "price-tag",
+    "description": "One quantity range and its unit price"
+  },
+  "options": {},
+  "attributes": {
+    "minQty": {
+      "type": "integer",
+      "required": true,
+      "min": 1
+    },
+    "maxQty": {
+      "type": "integer"
+    },
+    "unitPrice": {
+      "type": "decimal",
+      "required": true,
+      "min": 0
+    },
+    "label": {
+      "type": "string"
+    }
+  }
+}
