@@ -19,9 +19,6 @@
       "type": "decimal",
       "required": true,
       "min": 0
-    },
-    "label": {
-      "type": "string"
     }
   }
 }

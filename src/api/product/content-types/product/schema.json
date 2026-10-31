@@ -24,10 +24,18 @@
     "price": {
       "type": "decimal"
     },
+    "priceTable": {
+      "type": "text"
+    },
     "priceTiers": {
       "type": "component",
       "repeatable": true,
-      "component": "shared.price-tier"
+      "component": "shared.price-tier",
+      "pluginOptions": {
+        "content-manager": {
+          "visible": false
+        }
+      }
     },
     "priceNote": {
       "type": "text"
