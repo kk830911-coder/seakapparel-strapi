@@ -1153,6 +1153,30 @@ export interface PluginUsersPermissionsUser
   };
 }
 
+export interface ApiGlobalProductBlockGlobalProductBlock extends Struct.SingleTypeSchema {
+  collectionName: 'global_product_blocks';
+  info: {
+    displayName: 'Global Product Blocks';
+    pluralName: 'global-product-blocks';
+    singularName: 'global-product-block';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    craftBody: Schema.Attribute.Text;
+    craftImages: Schema.Attribute.Media<'images', true>;
+    craftTitle: Schema.Attribute.String;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    tradeTerms: Schema.Attribute.Text;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 declare module '@strapi/strapi' {
   export module Public {
     export interface ContentTypeSchemas {
@@ -1169,6 +1193,7 @@ declare module '@strapi/strapi' {
       'api::carousel-img.carousel-img': ApiCarouselImgCarouselImg;
       'api::category.category': ApiCategoryCategory;
       'api::faq.faq': ApiFaqFaq;
+      'api::global-product-block.global-product-block': ApiGlobalProductBlockGlobalProductBlock;
       'api::product.product': ApiProductProduct;
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;
