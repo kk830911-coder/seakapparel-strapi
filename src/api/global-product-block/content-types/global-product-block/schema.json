@@ -1,0 +1,62 @@
+{
+  "kind": "singleType",
+  "collectionName": "global_product_blocks",
+  "info": {
+    "singularName": "global-product-block",
+    "pluralName": "global-product-blocks",
+    "displayName": "Global Product Blocks",
+    "description": "Content shared by EVERY product detail page (craft, certifications, clients, logistics, trade terms). Edit once, applies to all products."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "specDefaults": {
+      "type": "component",
+      "repeatable": true,
+      "component": "shared.spec-row"
+    },
+    "craftTitle": {
+      "type": "string"
+    },
+    "craftBody": {
+      "type": "text"
+    },
+    "craftImages": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "certifications": {
+      "type": "component",
+      "repeatable": true,
+      "component": "shared.cert-item"
+    },
+    "clients": {
+      "type": "component",
+      "repeatable": true,
+      "component": "shared.client-logo"
+    },
+    "factoryShots": {
+      "type": "component",
+      "repeatable": true,
+      "component": "shared.detail-shot"
+    },
+    "infoBlocks": {
+      "type": "component",
+      "repeatable": true,
+      "component": "shared.info-block"
+    },
+    "tradeTerms": {
+      "type": "text"
+    },
+    "detailFaqs": {
+      "type": "component",
+      "repeatable": true,
+      "component": "shared.qa-item"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "collectionName": "components_shared_client_logos",
+  "info": {
+    "displayName": "Client Logo",
+    "icon": "users",
+    "description": "One client / brand logo shown in the trust wall"
+  },
+  "options": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "image": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    }
+  }
+}

@@ -23,6 +23,17 @@
       "relation": "oneToMany",
       "target": "api::product.product",
       "mappedBy": "category"
+    },
+    "specRows": {
+      "type": "component",
+      "repeatable": true,
+      "component": "shared.spec-row"
+    },
+    "craftTitle": {
+      "type": "string"
+    },
+    "craftBody": {
+      "type": "text"
     }
   }
 }

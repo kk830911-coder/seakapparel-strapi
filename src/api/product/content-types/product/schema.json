@@ -32,6 +32,25 @@
     "priceNote": {
       "type": "text"
     },
+    "specRows": {
+      "type": "component",
+      "repeatable": true,
+      "component": "shared.spec-row"
+    },
+    "sizeChart": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "detailImages": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images"
+      ]
+    },
     "moq": {
       "type": "integer"
     },

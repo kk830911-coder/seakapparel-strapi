@@ -1,0 +1,19 @@
+{
+  "collectionName": "components_shared_qa_items",
+  "info": {
+    "displayName": "QA Item",
+    "icon": "question",
+    "description": "One short Q&A shown at the bottom of the product detail area"
+  },
+  "options": {},
+  "attributes": {
+    "question": {
+      "type": "string",
+      "required": true
+    },
+    "answer": {
+      "type": "text",
+      "required": true
+    }
+  }
+}

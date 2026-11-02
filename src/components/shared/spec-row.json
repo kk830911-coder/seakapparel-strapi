@@ -1,0 +1,19 @@
+{
+  "collectionName": "components_shared_spec_rows",
+  "info": {
+    "displayName": "Spec Row",
+    "icon": "list",
+    "description": "One specification row: label + value (e.g. Fabric / 180gsm polyester)"
+  },
+  "options": {},
+  "attributes": {
+    "label": {
+      "type": "string",
+      "required": true
+    },
+    "value": {
+      "type": "text",
+      "required": true
+    }
+  }
+}

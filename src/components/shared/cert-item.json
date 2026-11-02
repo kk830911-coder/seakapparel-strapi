@@ -1,0 +1,31 @@
+{
+  "collectionName": "components_shared_cert_items",
+  "info": {
+    "displayName": "Cert Item",
+    "icon": "shield",
+    "description": "One certification: name + short description + certificate scan"
+  },
+  "options": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "desc": {
+      "type": "text"
+    },
+    "issuer": {
+      "type": "string"
+    },
+    "validUntil": {
+      "type": "string"
+    },
+    "image": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    }
+  }
+}

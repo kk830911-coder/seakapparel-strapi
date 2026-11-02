@@ -1,0 +1,25 @@
+{
+  "collectionName": "components_shared_info_blocks",
+  "info": {
+    "displayName": "Info Block",
+    "icon": "layer",
+    "description": "One shared content block: heading + body + optional images (payment / shipping / packaging ...)"
+  },
+  "options": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "body": {
+      "type": "text"
+    },
+    "images": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images"
+      ]
+    }
+  }
+}

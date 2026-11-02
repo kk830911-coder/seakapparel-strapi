@@ -1,0 +1,21 @@
+{
+  "collectionName": "components_shared_detail_shots",
+  "info": {
+    "displayName": "Detail Shot",
+    "icon": "picture",
+    "description": "One product / factory photo with caption"
+  },
+  "options": {},
+  "attributes": {
+    "image": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "caption": {
+      "type": "string"
+    }
+  }
+}
