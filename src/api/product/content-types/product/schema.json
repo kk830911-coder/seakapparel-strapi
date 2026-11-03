@@ -21,6 +21,9 @@
     "description": {
       "type": "blocks"
     },
+    "descriptionHtml": {
+      "type": "text"
+    },
     "price": {
       "type": "decimal"
     },
@@ -78,22 +81,6 @@
     },
     "customization_options": {
       "type": "text"
-    },
-    "sport_type": {
-      "type": "enumeration",
-      "enum": [
-        "basketball",
-        "football",
-        "hockey",
-        "soccer",
-        "baseball",
-        "yoga_fitness",
-        "running",
-        "cycling",
-        "mma_wrestling",
-        "swimming",
-        "team_uniform"
-      ]
     }
   }
 }
