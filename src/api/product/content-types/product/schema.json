@@ -21,9 +21,6 @@
     "description": {
       "type": "blocks"
     },
-    "descriptionHtml": {
-      "type": "text"
-    },
     "price": {
       "type": "decimal"
     },
