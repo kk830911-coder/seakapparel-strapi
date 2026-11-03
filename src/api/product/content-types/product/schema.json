@@ -47,6 +47,13 @@
         "images"
       ]
     },
+    "skuImages": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images"
+      ]
+    },
     "detailImages": {
       "type": "media",
       "multiple": true,
@@ -65,6 +72,13 @@
         "files",
         "videos",
         "audios"
+      ]
+    },
+    "video": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "videos"
       ]
     },
     "category": {
