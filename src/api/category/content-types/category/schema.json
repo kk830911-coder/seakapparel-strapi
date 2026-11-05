@@ -29,11 +29,8 @@
       "repeatable": true,
       "component": "shared.spec-row"
     },
-    "craftTitle": {
-      "type": "string"
-    },
-    "craftBody": {
-      "type": "text"
+    "craftContent": {
+      "type": "blocks"
     }
   }
 }
