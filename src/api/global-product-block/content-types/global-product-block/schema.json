@@ -12,6 +12,9 @@
   },
   "pluginOptions": {},
   "attributes": {
+    "specIntro": {
+      "type": "blocks"
+    },
     "specDefaults": {
       "type": "component",
       "repeatable": true,
